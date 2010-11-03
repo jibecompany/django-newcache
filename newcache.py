@@ -124,8 +124,10 @@ class CacheClass(BaseCache):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
+            if timeout is None:
+                timeout = self.default_timeout
             packed = self._pack_value(value, timeout)
-            real_timeout = (self._get_memcache_timeout(timeout) +
+            real_timeout = self._get_memcache_timeout(timeout +
                 CACHE_HERD_TIMEOUT)
         else:
             packed = value
@@ -154,8 +156,10 @@ class CacheClass(BaseCache):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
+            if timeout is None:
+                timeout = self.default_timeout
             packed = self._pack_value(value, timeout)
-            real_timeout = (self._get_memcache_timeout(timeout) +
+            real_timeout = self._get_memcache_timeout(timeout +
                 CACHE_HERD_TIMEOUT)
         else:
             packed = value
