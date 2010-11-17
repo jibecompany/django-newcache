@@ -206,18 +206,6 @@ class CacheClass(BaseCache):
 
     def close(self, **kwargs):
         self._cache.disconnect_all()
-
-    def incr(self, key, delta=1):
-        try:
-            return self._cache.incr(key_func(key), delta)
-        except NotFoundError:
-            raise ValueError("Key '%s' not found" % (key,))
-
-    def decr(self, key, delta=1):
-        try:
-            return self._cache.decr(key_func(key), delta)
-        except NotFoundError:
-            raise ValueError("Key '%s' not found" % (key,))
     
     def set_many(self, data, timeout=None, herd=True):
         if herd and timeout != 0:
