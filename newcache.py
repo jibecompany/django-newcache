@@ -132,7 +132,7 @@ class CacheClass(BaseCache):
             real_timeout = self._get_memcache_timeout(timeout)
         return self._cache.add(key_func(key), packed, real_timeout)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None, version=None):
         encoded_key = key_func(key)
         packed = self._cache.get(encoded_key)
         if packed is None:
