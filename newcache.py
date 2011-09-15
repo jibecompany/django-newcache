@@ -120,7 +120,7 @@ class CacheClass(BaseCache):
             timeout += int(time.time())
         return timeout
 
-    def add(self, key, value, timeout=None, herd=True):
+    def add(self, key, value, timeout=None, herd=True, **kwargs):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
@@ -134,7 +134,7 @@ class CacheClass(BaseCache):
             real_timeout = self._get_memcache_timeout(timeout)
         return self._cache.add(key_func(key), packed, real_timeout)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None, **kwargs):
         encoded_key = key_func(key)
         packed = self._cache.get(encoded_key)
         if packed is None:
@@ -152,7 +152,7 @@ class CacheClass(BaseCache):
         
         return val
 
-    def set(self, key, value, timeout=None, herd=True):
+    def set(self, key, value, timeout=None, herd=True, **kwargs):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
@@ -166,10 +166,10 @@ class CacheClass(BaseCache):
             real_timeout = self._get_memcache_timeout(timeout)
         return self._cache.set(key_func(key), packed, real_timeout)
 
-    def delete(self, key):
+    def delete(self, key, **kwargs):
         self._cache.delete(key_func(key))
 
-    def get_many(self, keys):
+    def get_many(self, keys, **kwargs):
         # First, map all of the keys through our key function
         rvals = map(key_func, keys)
         
@@ -207,7 +207,7 @@ class CacheClass(BaseCache):
     def close(self, **kwargs):
         self._cache.disconnect_all()
     
-    def set_many(self, data, timeout=None, herd=True):
+    def set_many(self, data, timeout=None, herd=True, **kwargs):
         if herd and timeout != 0:
             safe_data = dict(((key_func(k), self._pack_value(v, timeout))
                 for k, v in data.iteritems()))
@@ -216,8 +216,8 @@ class CacheClass(BaseCache):
                 (key_func(k), v) for k, v in data.iteritems()))
         self._cache.set_multi(safe_data, self._get_memcache_timeout(timeout))
     
-    def delete_many(self, keys):
+    def delete_many(self, keys, **kwargs):
         self._cache.delete_multi(map(key_func, keys))
     
-    def clear(self):
+    def clear(self, **kwargs):
         self._cache.flush_all()
