@@ -37,7 +37,7 @@ CACHE_KEY_MODULE = getattr(settings, 'CACHE_KEY_MODULE', 'newcache')
 CACHE_HERD_TIMEOUT = getattr(settings, 'CACHE_HERD_TIMEOUT', 60)
 
 CACHE_MIN_COMPRESS = getattr(settings, 'PYLIBMC_MIN_COMPRESS_LEN', 0)  # Disabled
-if CACHE_MIN_COMPRESS > 0 and not pylibmc.support_compression:
+if CACHE_MIN_COMPRESS > 0 and not memcache.support_compression:
     CACHE_MIN_COMPRESS = 0
 
 class Marker(object):
