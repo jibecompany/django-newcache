@@ -36,6 +36,10 @@ CACHE_BEHAVIORS = getattr(settings, 'CACHE_BEHAVIORS', {'hash': 'crc'})
 CACHE_KEY_MODULE = getattr(settings, 'CACHE_KEY_MODULE', 'newcache')
 CACHE_HERD_TIMEOUT = getattr(settings, 'CACHE_HERD_TIMEOUT', 60)
 
+MIN_COMPRESS = getattr(settings, 'PYLIBMC_MIN_COMPRESS_LEN', 0)  # Disabled
+if MIN_COMPRESS > 0 and not pylibmc.support_compression:
+    MIN_COMPRESS = 0
+
 class Marker(object):
     pass
 
@@ -130,7 +134,7 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.add(key_func(key), packed, real_timeout)
+        return self._cache.add(key_func(key), packed, real_timeout, MIN_COMPRESSION)
 
     def get(self, key, default=None):
         encoded_key = key_func(key)
@@ -160,7 +164,7 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.set(key_func(key), packed, real_timeout)
+        return self._cache.set(key_func(key), packed, real_timeout, MIN_COMPRESSINO)
 
     def delete(self, key):
         self._cache.delete(key_func(key))
