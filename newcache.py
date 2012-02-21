@@ -134,7 +134,10 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.add(key_func(key), packed, real_timeout, CACHE_MIN_COMPRESS)
+        args = [key_func(key), packed, real_timeout]
+        if using_pylibmc is True:
+            args.append(CACHE_MIN_COMPRESS)
+        return self._cache.add(*args)
 
     def get(self, key, default=None):
         encoded_key = key_func(key)
@@ -164,7 +167,10 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.set(key_func(key), packed, real_timeout, CACHE_MIN_COMPRESS)
+        args = [key_func(key), packed, real_timeout]
+        if using_pylibmc is True:
+            args.append(CACHE_MIN_COMPRESS)
+        return self._cache.set(*args)
 
     def delete(self, key):
         self._cache.delete(key_func(key))
