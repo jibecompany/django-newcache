@@ -1,6 +1,7 @@
 "Modified memcached cache backend"
 
 import time
+import os
 
 from threading import local
 
@@ -52,10 +53,12 @@ key_func = importlib.import_module(CACHE_KEY_MODULE).get_key
 
 class CacheClass(BaseCache):
 
-    def __init__(self, server, params):
+    def __init__(self, server, params, username=None, password=None):
         super(CacheClass, self).__init__(params)
         self._servers = server.split(';')
-        self._use_binary = bool(params.get('binary'))
+        self._use_binary = bool(params.get('BINARY'))
+        self._username = os.environ.get('MEMCACHE_USERNAME', username)
+        self._password = os.environ.get('MEMCACHE_PASSWORD', password)
         self._local = local()
     
     @property
@@ -69,9 +72,11 @@ class CacheClass(BaseCache):
         
         # Use binary mode if it's both supported and requested
         if using_pylibmc and self._use_binary:
-            client = memcache.Client(self._servers, binary=True)
+            client = memcache.Client(self._servers, binary=True,
+                username=self._username, password=self._password)
         else:
-            client = memcache.Client(self._servers)
+            client = memcache.Client(self._servers,
+                username=self._username, password=self._password)
         
         # If we're using pylibmc, set the behaviors according to settings
         if using_pylibmc:
