@@ -5,7 +5,10 @@ import time
 from threading import local
 
 from django.core.cache.backends.base import BaseCache, InvalidCacheBackendError
-from django.utils.hashcompat import sha_constructor
+try:
+    from hashlib import sha1 as sha_constructor
+except ImportError:
+    from django.utils.hashcompat import sha_constructor
 from django.utils.encoding import smart_str
 from django.conf import settings
 
