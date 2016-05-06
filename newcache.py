@@ -44,12 +44,12 @@ class Marker(object):
 
 MARKER = Marker()
 
-def get_key(key):
+def get_key(key, version=None):
     """
     Returns a hashed, versioned, flavored version of the string that was input.
     """
     hashed = sha_constructor(smart_str(key)).hexdigest()
-    return ''.join((FLAVOR, '-', CACHE_VERSION, '-', hashed))
+    return ''.join((FLAVOR, '-', CACHE_VERSION, '-', hashed, version if version is not None else ''))
 
 key_func = importlib.import_module(CACHE_KEY_MODULE).get_key
 
@@ -123,7 +123,7 @@ class CacheClass(BaseCache):
             timeout += int(time.time())
         return timeout
 
-    def add(self, key, value, timeout=None, herd=True):
+    def add(self, key, value, timeout=None, herd=True, version=None):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
@@ -133,10 +133,10 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.add(key_func(key), packed, real_timeout)
+        return self._cache.add(key_func(key, version), packed, real_timeout)
 
-    def get(self, key, default=None):
-        encoded_key = key_func(key)
+    def get(self, key, default=None, version=None):
+        encoded_key = key_func(key, version)
         packed = self._cache.get(encoded_key)
         if packed is None:
             return default
@@ -153,7 +153,7 @@ class CacheClass(BaseCache):
         
         return val
 
-    def set(self, key, value, timeout=None, herd=True):
+    def set(self, key, value, timeout=None, herd=True, version=None):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
@@ -163,14 +163,14 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.set(key_func(key), packed, real_timeout)
+        return self._cache.set(key_func(key, version), packed, real_timeout)
 
-    def delete(self, key):
-        self._cache.delete(key_func(key))
+    def delete(self, key, version=None):
+        self._cache.delete(key_func(key, version))
 
-    def get_many(self, keys):
+    def get_many(self, keys, version=None):
         # First, map all of the keys through our key function
-        rvals = map(key_func, keys)
+        rvals = [key_func(k, version) for k in keys]
         
         packed_resp = self._cache.get_multi(rvals)
         
@@ -206,9 +206,9 @@ class CacheClass(BaseCache):
     def close(self, **kwargs):
         self._cache.disconnect_all()
 
-    def incr(self, key, delta=1):
+    def incr(self, key, delta=1, version=None):
         try:
-            return self._cache.incr(key_func(key), delta)
+            return self._cache.incr(key_func(key, version), delta)
         except NotFoundError:
             raise ValueError("Key '%s' not found" % (key,))
 
@@ -218,17 +218,17 @@ class CacheClass(BaseCache):
         except NotFoundError:
             raise ValueError("Key '%s' not found" % (key,))
     
-    def set_many(self, data, timeout=None, herd=True):
+    def set_many(self, data, timeout=None, herd=True, version=None):
         if herd and timeout != 0:
-            safe_data = dict(((key_func(k), self._pack_value(v, timeout))
+            safe_data = dict(((key_func(k, version), self._pack_value(v, timeout))
                 for k, v in data.iteritems()))
         else:
             safe_data = dict((
-                (key_func(k), v) for k, v in data.iteritems()))
+                (key_func(k, version), v) for k, v in data.iteritems()))
         self._cache.set_multi(safe_data, self._get_memcache_timeout(timeout))
     
-    def delete_many(self, keys):
-        self._cache.delete_multi(map(key_func, keys))
+    def delete_many(self, keys, version=None):
+        self._cache.delete_multi([key_func(k, version) for k in keys])
     
     def clear(self):
         self._cache.flush_all()
