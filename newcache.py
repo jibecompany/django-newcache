@@ -134,12 +134,14 @@ class CacheClass(BaseCache):
             timeout += int(time.time())
         return timeout
 
-    def add(self, key, value, timeout=None, herd=True, version=None):
+    def add(self, key, value, timeout=None, herd=True, version=None, **kwargs):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
+            if timeout is None:
+                timeout = self.default_timeout
             packed = self._pack_value(value, timeout)
-            real_timeout = (self._get_memcache_timeout(timeout) +
+            real_timeout = self._get_memcache_timeout(timeout +
                 CACHE_HERD_TIMEOUT)
         else:
             packed = value
@@ -149,7 +151,7 @@ class CacheClass(BaseCache):
             args.append(CACHE_MIN_COMPRESS)
         return self._cache.add(*args)
 
-    def get(self, key, default=None, version=None):
+    def get(self, key, default=None, version=None, **kwargs):
         encoded_key = key_func(key, version)
         packed = self._cache.get(encoded_key)
         if packed is None:
@@ -167,12 +169,14 @@ class CacheClass(BaseCache):
 
         return val
 
-    def set(self, key, value, timeout=None, herd=True, version=None):
+    def set(self, key, value, timeout=None, herd=True, version=None, **kwargs):
         # If the user chooses to use the herd mechanism, then encode some
         # timestamp information into the object to be persisted into memcached
         if herd and timeout != 0:
+            if timeout is None:
+                timeout = self.default_timeout
             packed = self._pack_value(value, timeout)
-            real_timeout = (self._get_memcache_timeout(timeout) +
+            real_timeout = self._get_memcache_timeout(timeout +
                 CACHE_HERD_TIMEOUT)
         else:
             packed = value
@@ -182,10 +186,10 @@ class CacheClass(BaseCache):
             args.append(CACHE_MIN_COMPRESS)
         return self._cache.set(*args)
 
-    def delete(self, key, version=None):
+    def delete(self, key, version=None, **kwargs):
         self._cache.delete(key_func(key, version))
 
-    def get_many(self, keys, version=None):
+    def get_many(self, keys, version=None, **kwargs):
         # First, map all of the keys through our key function
         rvals = [key_func(k, version) for k in keys]
         
@@ -235,7 +239,7 @@ class CacheClass(BaseCache):
         except NotFoundError:
             raise ValueError("Key '%s' not found" % (key,))
     
-    def set_many(self, data, timeout=None, herd=True, version=None):
+    def set_many(self, data, timeout=None, herd=True, version=None, **kwargs):
         if herd and timeout != 0:
             safe_data = dict(((key_func(k, version), self._pack_value(v, timeout))
                 for k, v in data.iteritems()))
@@ -244,8 +248,8 @@ class CacheClass(BaseCache):
                 (key_func(k, version), v) for k, v in data.iteritems()))
         self._cache.set_multi(safe_data, self._get_memcache_timeout(timeout))
     
-    def delete_many(self, keys, version=None):
+    def delete_many(self, keys, version=None, **kwargs):
         self._cache.delete_multi([key_func(k, version) for k in keys])
     
-    def clear(self):
+    def clear(self, **kwargs):
         self._cache.flush_all()
