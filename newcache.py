@@ -2,12 +2,13 @@
 
 import time
 import os
+import hashlib
 
-from hashlib import sha1 as sha_constructor
 from threading import local
 
 from django.core.cache.backends.base import BaseCache, InvalidCacheBackendError
 from django.utils import six
+
 from django.utils.encoding import smart_str
 from django.conf import settings
 
@@ -51,7 +52,7 @@ def get_key(key, version=None):
     """
     Returns a hashed, versioned, flavored version of the string that was input.
     """
-    hashed = sha_constructor(smart_str(key)).hexdigest()
+    hashed = hashlib.sha1(smart_str(key)).hexdigest()
     return ''.join((FLAVOR, '-', CACHE_VERSION, '-', hashed, version if version is not None else ''))
 
 key_func = importlib.import_module(CACHE_KEY_MODULE).get_key
