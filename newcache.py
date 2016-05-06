@@ -3,11 +3,11 @@
 import time
 import os
 
+from hashlib import sha1 as sha_constructor
 from threading import local
 
 from django.core.cache.backends.base import BaseCache, InvalidCacheBackendError
 from django.utils import six
-from hashlib import sha1 as sha_constructor
 from django.utils.encoding import smart_str
 from django.conf import settings
 
@@ -37,6 +37,10 @@ CACHE_VERSION = str(getattr(settings, 'CACHE_VERSION', 1))
 CACHE_BEHAVIORS = getattr(settings, 'CACHE_BEHAVIORS', {'hash': 'crc'})
 CACHE_KEY_MODULE = getattr(settings, 'CACHE_KEY_MODULE', 'newcache')
 CACHE_HERD_TIMEOUT = getattr(settings, 'CACHE_HERD_TIMEOUT', 60)
+
+CACHE_MIN_COMPRESS = getattr(settings, 'PYLIBMC_MIN_COMPRESS_LEN', 0)  # Disabled
+if CACHE_MIN_COMPRESS > 0 and not memcache.support_compression:
+    CACHE_MIN_COMPRESS = 0
 
 class Marker(object):
     pass
@@ -140,7 +144,10 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.add(key_func(key, version), packed, real_timeout)
+        args = [key_func(key, version), packed, real_timeout]
+        if using_pylibmc is True:
+            args.append(CACHE_MIN_COMPRESS)
+        return self._cache.add(*args)
 
     def get(self, key, default=None, version=None):
         encoded_key = key_func(key, version)
@@ -170,7 +177,10 @@ class CacheClass(BaseCache):
         else:
             packed = value
             real_timeout = self._get_memcache_timeout(timeout)
-        return self._cache.set(key_func(key, version), packed, real_timeout)
+        args = [key_func(key, version), packed, real_timeout]
+        if using_pylibmc is True:
+            args.append(CACHE_MIN_COMPRESS)
+        return self._cache.set(*args)
 
     def delete(self, key, version=None):
         self._cache.delete(key_func(key, version))
