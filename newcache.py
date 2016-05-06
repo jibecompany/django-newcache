@@ -5,10 +5,8 @@ import time
 from threading import local
 
 from django.core.cache.backends.base import BaseCache, InvalidCacheBackendError
-try:
-    from hashlib import sha1 as sha_constructor
-except ImportError:
-    from django.utils.hashcompat import sha_constructor
+from django.utils import six
+from hashlib import sha1 as sha_constructor
 from django.utils.encoding import smart_str
 from django.conf import settings
 
@@ -27,7 +25,7 @@ except ImportError:
         import memcache
         NotFoundError = ValueError
     except ImportError:
-        raise InvalidCacheBackendError('Memcached cache backend requires ' + 
+        raise InvalidCacheBackendError('Memcached cache backend requires ' +
             'either the "pylibmc" or "memcache" library')
 
 # Flavor is used amongst multiple apps to differentiate the "flavor" of the
@@ -57,10 +55,15 @@ class CacheClass(BaseCache):
 
     def __init__(self, server, params):
         super(CacheClass, self).__init__(params)
-        self._servers = server.split(';')
+
+        if isinstance(server, six.string_types):
+            self._servers = server.split(';')
+        else:
+            self._servers = server
+
         self._use_binary = bool(params.get('binary'))
         self._local = local()
-    
+
     @property
     def _cache(self):
         """
@@ -69,17 +72,17 @@ class CacheClass(BaseCache):
         client = getattr(self._local, 'client', None)
         if client:
             return client
-        
+
         # Use binary mode if it's both supported and requested
         if using_pylibmc and self._use_binary:
             client = memcache.Client(self._servers, binary=True)
         else:
             client = memcache.Client(self._servers)
-        
+
         # If we're using pylibmc, set the behaviors according to settings
         if using_pylibmc:
             client.behaviors = CACHE_BEHAVIORS
-        
+
         self._local.client = client
         return client
 
@@ -90,7 +93,7 @@ class CacheClass(BaseCache):
         """
         herd_timeout = (timeout or self.default_timeout) + int(time.time())
         return (MARKER, value, herd_timeout)
-    
+
     def _unpack_value(self, value, default=None):
         """
         Unpacks a value and returns a tuple whose first element is the value,
@@ -140,9 +143,9 @@ class CacheClass(BaseCache):
         packed = self._cache.get(encoded_key)
         if packed is None:
             return default
-        
+
         val, refresh = self._unpack_value(packed)
-        
+
         # If the cache has expired according to the embedded timeout, then
         # shove it back into the cache for a while, but act as if it was a
         # cache miss.
@@ -150,7 +153,7 @@ class CacheClass(BaseCache):
             self._cache.set(encoded_key, val,
                 self._get_memcache_timeout(CACHE_HERD_TIMEOUT))
             return default
-        
+
         return val
 
     def set(self, key, value, timeout=None, herd=True, version=None):
@@ -173,34 +176,34 @@ class CacheClass(BaseCache):
         rvals = [key_func(k, version) for k in keys]
         
         packed_resp = self._cache.get_multi(rvals)
-        
+
         resp = {}
         reinsert = {}
-                
+
         for key, packed in packed_resp.iteritems():
             # If it was a miss, treat it as a miss to our response & continue
             if packed is None:
                 resp[key] = packed
                 continue
-            
+
             val, refresh = self._unpack_value(packed)
             if refresh:
                 reinsert[key] = val
                 resp[key] = None
             else:
                 resp[key] = val
-        
+
         # If there are values to re-insert for a short period of time, then do
         # so now.
         if reinsert:
             self._cache.set_multi(reinsert,
                 self._get_memcache_timeout(CACHE_HERD_TIMEOUT))
-        
+
         # Build a reverse map of encoded keys to the original keys, so that
         # the returned dict's keys are what users expect (in that they match
         # what the user originally entered)
         reverse = dict(zip(rvals, keys))
-        
+
         return dict(((reverse[k], v) for k, v in resp.iteritems()))
 
     def close(self, **kwargs):
