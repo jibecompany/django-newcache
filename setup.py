@@ -8,7 +8,7 @@ setup(
     name='django-newcache',
     version=VERSION,
     description='Improved memcached cache backend for Django',
-    long_description=file(
+    long_description=open(
         os.path.join(os.path.dirname(__file__), 'README.txt')
     ).read(),
     author='Eric Florenzano',
